@@ -22,6 +22,7 @@ jobs:
     - name: Ansible Playbook
       env:
         SSH_KEY: ${{ secrets.SSH_KEY }}
+        REF: ${{ github.ref }}
       run: |
         mkdir -p /home/runner/.ssh
         echo "$SSH_KEY" > /home/runner/.ssh/id_rsa
@@ -38,4 +39,8 @@ jobs:
         EOF
         chmod 600 /home/runner/.ssh/known_hosts
         cd ansible
-        ansible-playbook -i inventory up.yml
+        if [[ $REF == 'refs/heads/main' ]]; then
+          ansible-playbook -i inventory up.yml
+        else
+          ansible-playbook -i inventory up.yml --check
+        fi
