@@ -1,0 +1,26 @@
+---
+name: Deploy
+on: push
+jobs:
+  ansible:
+    name: Execute Ansible
+    runs-on: ubuntu-20.04
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Install deps
+      run: |
+        sudo apt-get install python3 python3-yaml ccrypt
+        pip3 install ansible
+        ansible-galaxy collection install community.docker
+    - name: Render config
+      env:
+        CCRYPT_KEY: ${{ secrets.CCRYPT_KEY }}
+      run: |
+        ccdecrypt -E CCRYPT_KEY providers.yml
+        mkdir -p ansible/files
+        python3 config.py --domain envoy-oauth.lab.terorie.dev --providers providers.yml --tls-privkey /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/privkey.pem --tls-fullchain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/fullchain.pem --tls-chain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/chain.pem > ansible/files/envoy.json
+    - name: Ansible Playbook
+      run: |
+        cd ansible
+        ansible-playbook -i inventory up.yml

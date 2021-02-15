@@ -32,7 +32,6 @@ Root cause: Unknown
 The Envoy HTTP client for the token response times out connecting to the OAuth server.
 
 ```
-[2021-02-15 02:24:23.982][1][debug][upstream] [source/common/upstream/logical_dns_cluster.cc:155] DNS refresh rate reset for discord.com, refresh rate 5000 ms
 [2021-02-15 02:24:27.444][12][debug][router] [source/common/router/router.cc:803] [C0][S14383117660753541910] upstream timeout
 [2021-02-15 02:24:27.446][12][debug][pool] [source/common/conn_pool/conn_pool_base.cc:490] cancelling pending stream
 [2021-02-15 02:24:27.446][12][debug][router] [source/common/router/upstream_request.cc:291] [C0][S14383117660753541910] canceled pool request
