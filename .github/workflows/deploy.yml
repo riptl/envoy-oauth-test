@@ -10,13 +10,12 @@ jobs:
       uses: actions/checkout@v2
     - name: Install deps
       run: |
-        sudo apt-get install python3 python3-yaml ccrypt
+        sudo apt-get install python3 python3-yaml
         pip3 install ansible
     - name: Render config
       env:
-        CCRYPT_KEY: ${{ secrets.CCRYPT_KEY }}
+        VAULT_PASSWORD: ${{ secrets.VAULT_PASSWORD }}
       run: |
-        ccdecrypt -E CCRYPT_KEY providers.yml
         mkdir -p ansible/files
         python3 config.py --domain envoy-oauth.lab.terorie.dev --providers providers.yml --tls-privkey /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/privkey.pem --tls-fullchain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/fullchain.pem --tls-chain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/chain.pem > ansible/files/envoy.json
     - name: Ansible Playbook

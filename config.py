@@ -2,7 +2,11 @@
 
 import argparse
 import json
+import os
 from urllib.parse import urlparse
+
+from ansible.constants import DEFAULT_VAULT_ID_MATCH
+from ansible.parsing.vault import VaultLib, VaultSecret
 import yaml
 
 parser = argparse.ArgumentParser(description="Generate Envoy config file")
@@ -188,8 +192,21 @@ builder = ConfigBuilder(
     args.domain, args.tls_fullchain, args.tls_chain, args.tls_privkey
 )
 
+vault_password = os.getenv("VAULT_PASSWORD")
+if vault_password is not None:
+    vault = VaultLib(
+        [(DEFAULT_VAULT_ID_MATCH, VaultSecret(os.getenv("VAULT_PASSWORD").encode("utf-8")))]
+    )
+
+
+def vault_constructor(loader, node):
+    value = loader.construct_scalar(node)
+    return vault.decrypt(value).decode("utf-8")
+
+
 with open(args.providers, "r") as f:
-    providers = yaml.safe_load(f.read())
+    yaml.add_constructor("!vault", vault_constructor)
+    providers = yaml.load(f.read(), Loader=yaml.Loader)
 
 for provider in providers:
     builder.render_site(
