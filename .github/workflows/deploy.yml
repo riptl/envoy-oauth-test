@@ -20,6 +20,22 @@ jobs:
         mkdir -p ansible/files
         python3 config.py --domain envoy-oauth.lab.terorie.dev --providers providers.yml --tls-privkey /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/privkey.pem --tls-fullchain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/fullchain.pem --tls-chain /etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev/chain.pem > ansible/files/envoy.json
     - name: Ansible Playbook
+      env:
+        SSH_KEY: ${{ secrets.SSH_KEY }}
       run: |
+        mkdir -p /home/runner/.ssh
+        echo "$SSH_KEY" > /home/runner/.ssh/id_rsa
+        chmod 600 /home/runner/.ssh/id_rsa
+        cat >> /home/runner/.ssh/known_hosts <<EOF
+        # lab.terorie.dev:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1
+        # lab.terorie.dev:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1
+        |1|kvqI0jNdje47GOfuZGVfpHZ/S3I=|eKEsZv1q4+2JgNQi65F3Hk50bV0= ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDSHNvkIKL88/401e+IWSpgFuQtlbzwOM+mRrmVmnTHC1xomiadi7sU056eyDS2G4kgm2HHO4+UPCG4tT0JYez0br+J1BdonhEgnybPzmDIpbhR8ceO6XgB8o0Wqk32tTxFc0YfPMTQKu4k+3N1h7mD2AU/5dmarDhjAPs0j+Uyt5rmQinUB2h9DQ3n/7tJUVuAa1A10ngrNK5qEkDTq4ZmO1a/6khoKtEnaJ7AwY7blJA19pW603xDG4I2TI2HONy+ogFI1Dd6UPlhiAhud9MvHIanQUsgeHdbgA/BrnoT2ds2ThoBDwViqGwN4lh5JFGcG2PWooDQ+t77IxhdF1r+MuHT31Fpa26bO9VitTnisaInTSUQQdABHl6NhzA5IUWY/ocv92YiKbk54G0w2Dam5EMxyu9TFodsvdbwG3pMSWC+opQ1plGwne9yiGQXauaw4Nx395zATyhQjudTdhcGiSwKwTREoRcgkcJdlEWYLvDJsu9RP+w/ES02qsQ+PXM=
+        # lab.terorie.dev:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1
+        |1|1XyppJdmbgvynGENwf5+6jm+IFc=|6OkpRm7KA22qV/qkcg2uCY1mj1c= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBKK8TEld0MzSQd/EXF9xJGr6ZVgmxFfoIEDUTD/R3il+4s6AKympqs5uxmHxJy0KofSt/eiUfQjsW8GCpExBk7M=
+        # lab.terorie.dev:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1
+        |1|o5tYztG9rAVyd2FcpSuJBNcpDiA=|qpR4ZAK968JVaqTXWC0E0wW/W+0= ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHtm/dVA0YTi5BoBr4TH8Ie/sByfMcNAnoovCD9lWiep
+        # lab.terorie.dev:22 SSH-2.0-OpenSSH_8.2p1 Ubuntu-4ubuntu0.1
+        EOF
+        chmod 600 /home/runner/.ssh/known_hosts
         cd ansible
         ansible-playbook -i inventory up.yml
