@@ -26,7 +26,6 @@
       - '/etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev:/tls:ro'
       published_ports:
       - '[2a01:4f9:c010:5f85::6969]:80:80'
-      container_default_behavior: "compatibility"
   - name: ensure cert gets renewed
     become: true
     become_user: root
@@ -62,4 +61,3 @@
       command: ["envoy", "-c", "/etc/envoy/envoy.json", "--log-level", "debug"]
       published_ports:
       - '[2a01:4f9:c010:5f85::6969]:443:443'
-      container_default_behavior: "compatibility"
