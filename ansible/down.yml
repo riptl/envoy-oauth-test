@@ -6,11 +6,11 @@
       name: envoy-oauth-cert-renew
       state: absent
   - name: terminate envoy
-    community.general.docker_container:
+    docker_container:
       name: envoy-oauth-test
       state: absent
   - name: terminate ACME server
-    community.general.docker_container:
+    docker_container:
       name: envoy-oauth-acme-server
       state: absent
   - name: delete envoy config

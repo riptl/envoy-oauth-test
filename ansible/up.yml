@@ -16,7 +16,7 @@
       mode: 0755
       state: directory
   - name: run ACME server
-    community.general.docker_container:
+    docker_container:
       name: envoy-oauth-acme-server
       image: nginx:1
       restart_policy: unless-stopped
@@ -48,7 +48,7 @@
         -d twitch.envoy-oauth.lab.terorie.dev
         && docker restart envoy-oauth-test
   - name: run envoy
-    community.general.docker_container:
+    docker_container:
       name: envoy-oauth-test
       #image: docker.io/envoyproxy/envoy:v1.17-latest
       image: docker.io/envoyproxy/envoy-dev:latest
