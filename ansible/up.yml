@@ -1,0 +1,65 @@
+---
+- hosts: all
+  handlers:
+  - name: restart envoy
+    command: docker restart envoy-oauth-test
+  tasks:
+  - name: copy envoy config
+    copy:
+      src: envoy.json
+      dest: /home/envoy-oauth/envoy.json
+      mode: 0644
+    notify: restart envoy
+  - name: create ACME dir
+    file:
+      path: /home/envoy-oauth/acme
+      mode: 0755
+      state: directory
+  - name: run ACME server
+    community.general.docker_container:
+      name: envoy-oauth-acme-server
+      image: nginx:1
+      restart_policy: unless-stopped
+      state: started
+      volumes:
+      - '/home/envoy-oauth/acme:/usr/share/nginx/html:ro'
+      - '/etc/letsencrypt/live/infra.envoy-oauth.lab.terorie.dev:/tls:ro'
+      published_ports:
+      - '[2a01:4f9:c010:5f85::6969]:80:80'
+      container_default_behavior: "compatibility"
+  - name: ensure cert gets renewed
+    become: true
+    become_user: root
+    cron:
+      name: envoy-oauth-cert-renew
+      weekday: "2"
+      hour: "4"
+      minute: "20"
+      job: >
+        certbot certonly -n
+        --webroot --webroot-path /home/envoy-oauth/acme
+        -m "me@terorie.dev" --agree-tos
+        -d infra.envoy-oauth.lab.terorie.dev
+        -d amazon.envoy-oauth.lab.terorie.dev
+        -d discord.envoy-oauth.lab.terorie.dev
+        -d github.envoy-oauth.lab.terorie.dev
+        -d gitlab.envoy-oauth.lab.terorie.dev
+        -d google.envoy-oauth.lab.terorie.dev
+        -d twitch.envoy-oauth.lab.terorie.dev
+        && docker restart envoy-oauth-test
+  - name: run envoy
+    community.general.docker_container:
+      name: envoy-oauth-test
+      #image: docker.io/envoyproxy/envoy:v1.17-latest
+      image: docker.io/envoyproxy/envoy-dev:latest
+      restart_policy: unless-stopped
+      state: started
+      env:
+        ENVOY_UID: "0"
+      volumes:
+      - '/etc/letsencrypt:/etc/letsencrypt:ro'
+      - '/home/envoy-oauth/envoy.json:/etc/envoy/envoy.json:ro'
+      command: ["envoy", "-c", "/etc/envoy/envoy.json", "--log-level", "debug"]
+      published_ports:
+      - '[2a01:4f9:c010:5f85::6969]:443:443'
+      container_default_behavior: "compatibility"

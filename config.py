@@ -7,20 +7,23 @@ import yaml
 
 parser = argparse.ArgumentParser(description="Generate Envoy config file")
 parser.add_argument(
-    "--listen_address", type=str, default="0.0.0.0", help="IP address to listen on"
-)
-parser.add_argument(
     "--domain", type=str, required=True, help="Domain to expose test on"
 )
 parser.add_argument(
     "--providers", type=str, required=True, help="Path to providers file"
 )
+parser.add_argument("--tls-fullchain", type=str, help="TLS fullchain")
+parser.add_argument("--tls-chain", type=str, help="TLS chain")
+parser.add_argument("--tls-privkey", type=str, help="TLS privkey")
 args = parser.parse_args()
 
 
 class ConfigBuilder:
-    def __init__(self, domain):
+    def __init__(self, domain, tls_fullchain, tls_chain, tls_privkey):
         self.domain = domain
+        self.tls_fullchain = tls_fullchain
+        self.tls_chain = tls_chain
+        self.tls_privkey = tls_privkey
         self.config = {
             "admin": {
                 "access_log_path": "/var/log/envoy/access.log",
@@ -32,8 +35,9 @@ class ConfigBuilder:
                         "name": "public-https",
                         "address": {
                             "socket_address": {
-                                "address": args.listen_address,
+                                "address": "::",
                                 "port_value": 443,
+                                "ipv4_compat": True,
                             }
                         },
                         "listener_filters": [
@@ -56,6 +60,7 @@ class ConfigBuilder:
         client_secret,
         token_endpoint,
         authorize_endpoint,
+        auth_scopes,
     ):
         token_secret_name = name + "-token-secret"
         hmac_secret_name = name + "-hmac"
@@ -74,7 +79,7 @@ class ConfigBuilder:
         )
         token_url = urlparse(token_endpoint)
         subdomain = f"{name}.{self.domain}"
-        redirect_uri = f"https://{name}.{self.domain}"
+        redirect_uri = f"https://{subdomain}/callback"
         oauth_filter = {
             "name": "envoy.filters.http.oauth2",
             "typed_config": {
@@ -94,6 +99,7 @@ class ConfigBuilder:
                         "token_secret": {"name": token_secret_name},
                         "hmac_secret": {"name": hmac_secret_name},
                     },
+                    "auth_scopes": auth_scopes,
                 },
             },
         }
@@ -119,12 +125,33 @@ end
             },
             "http_filters": [oauth_filter, lua_filter, router_filter],
         }
+        socket_config = None
+        if self.tls_privkey is not None:
+            socket_config = {
+                "name": "envoy.transport_sockets.tls",
+                "typed_config": {
+                    "@type": "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.DownstreamTlsContext",
+                    "common_tls_context": {
+                        "tls_params": {"tls_minimum_protocol_version": "TLSv1_2"},
+                        "tls_certificates": [
+                            {
+                                "certificate_chain": {"filename": self.tls_fullchain},
+                                "private_key": {"filename": self.tls_privkey},
+                            }
+                        ],
+                        "validation_context": {
+                            "trusted_ca": {"filename": self.tls_chain}
+                        },
+                    },
+                },
+            }
         filter_chain = {
             "filter_chain_match": {"server_names": [subdomain]},
             "filters": {
                 "name": "envoy.http_connection_manager",
                 "typed_config": conn_mgr_config,
             },
+            "transport_socket": socket_config,
         }
         chains = self.config["static_resources"]["listeners"][0]["filter_chains"]
         chains.append(filter_chain)
@@ -145,12 +172,21 @@ end
                 "cluster_name": name,
                 "endpoints": [{"lb_endpoints": [{"endpoint": token_address}]}],
             },
+            "transport_socket": {
+                "name": "envoy.transport_sockets.tls",
+                "typed_config": {
+                    "@type": "type.googleapis.com/envoy.extensions.transport_sockets.tls.v3.UpstreamTlsContext",
+                    "sni": token_url.netloc,
+                },
+            },
         }
         clusters = self.config["static_resources"]["clusters"]
         clusters.append(cluster)
 
 
-builder = ConfigBuilder(args.domain)
+builder = ConfigBuilder(
+    args.domain, args.tls_fullchain, args.tls_chain, args.tls_privkey
+)
 
 with open(args.providers, "r") as f:
     providers = yaml.safe_load(f.read())
@@ -162,6 +198,7 @@ for provider in providers:
         client_secret=provider["client_secret"],
         token_endpoint=provider["token_endpoint"],
         authorize_endpoint=provider["authorize_endpoint"],
+        auth_scopes=provider.get("auth_scopes"),
     )
 
 print(json.dumps(builder.config))

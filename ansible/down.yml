@@ -1,0 +1,23 @@
+---
+- hosts: all
+  tasks:
+  - name: stop renewing cert
+    cron:
+      name: envoy-oauth-cert-renew
+      state: absent
+  - name: terminate envoy
+    community.general.docker_container:
+      name: envoy-oauth-test
+      state: absent
+  - name: terminate ACME server
+    community.general.docker_container:
+      name: envoy-oauth-acme-server
+      state: absent
+  - name: delete envoy config
+    file:
+      path: /home/envoy-oauth/envoy.json
+      state: absent
+  - name: delete ACME dir
+    file:
+      path: /home/envoy-oauth/acme
+      state: absent

@@ -1,0 +1,2 @@
+[hosts]
+lab.terorie.dev ansible_user=envoy-oauth ansible_python_interpreter=/usr/bin/python3
